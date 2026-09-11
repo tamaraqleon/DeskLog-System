@@ -221,7 +221,7 @@ def render_cuaderno():
             st.caption(f"Detalle: {nota}")
           st.markdown("---")
     else:
-      st.info("📭 No hay registros para esta fecha. Esta página está en blanco.")
+      st.info("No hay registros para esta fecha. Esta página está en blanco.")
 
 # ----------------------------------------------
 # 4. NOTAS 
