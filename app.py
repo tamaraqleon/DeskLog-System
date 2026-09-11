@@ -7,6 +7,7 @@ from views import (
     render_cuaderno,
     render_notas,
     render_papelera,
+    render_bienvenida, 
 )
 
 # Inicializar Base de Datos
@@ -50,3 +51,29 @@ if not st.session_state.autenticado:
         st.rerun()
       else:
         st.error("Access Denied")
+
+else:
+  # APLICACIÓN PRINCIPAL
+  st.sidebar.title("Menú de Navegación")
+  opcion = st.sidebar.radio(
+      "Seleccione una opción:",
+      ["Inicio", "Registro de Turnos", "Buscar en el Histórico", "Vista Cuaderno", "Notas", "Papelera"],
+  )
+
+  if st.sidebar.button("Cerrar Sesión"):
+    st.session_state.autenticado = False
+    st.rerun()
+
+  # Enrutador de vistas limpio
+  if opcion == "Inicio":
+    render_bienvenida()
+  elif opcion == "Registro de Turnos":
+    render_registro_turnos()
+  elif opcion == "Buscar en el Histórico":
+    render_buscador()
+  elif opcion == "Vista Cuaderno":
+    render_cuaderno()
+  elif opcion == "Notas":
+    render_notas()
+  elif opcion == "Papelera":
+    render_papelera()

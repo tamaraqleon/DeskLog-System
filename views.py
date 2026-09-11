@@ -2,6 +2,10 @@ from datetime import datetime, timedelta
 import sqlite3
 import streamlit as st
 
+# ------------------------------------------
+# 1. REGISTRO DE TURNOS
+# ------------------------------------------
+
 def render_registro_turnos():
     st.title("Libro Recepción")
     
@@ -95,6 +99,10 @@ def render_registro_turnos():
         else:
           st.warning("No hay nada escrito para guardar.")
 
+# --------------------------------------------
+# 2. BUSCAR EN EL HISTÓRICO 
+# --------------------------------------------
+
 def render_buscador():
     st.title("Buscador de Antecedentes")  
     st.write("Busca registros por palabra clave o selecciona un día específico para revisar o limpiar turnos.")
@@ -162,6 +170,10 @@ def render_buscador():
             st.session_state["resultados_busqueda"] = [r for r in resultados if r[0] != res_id]
             st.rerun()
 
+# --------------------------------------------
+# 3. VISTA CUADERNO
+# --------------------------------------------
+
 def render_cuaderno():
     st.title("Cuaderno de Turnos")
     st.write("Hojea las páginas del libro por día para revisar los turnos pasados como en un cuaderno físico.")
@@ -173,7 +185,7 @@ def render_cuaderno():
 
     with col_flecha_izq:
       st.markdown("<br>", unsafe_allow_html=True)
-      if st.button("◀ Día Anterior", use_container_width=True):
+      if st.button("◀", use_container_width=True):
         st.session_state.fecha_cuaderno_actual -= timedelta(days=1)
         st.rerun()
 
@@ -185,7 +197,7 @@ def render_cuaderno():
 
     with col_flecha_der:
       st.markdown("<br>", unsafe_allow_html=True)
-      if st.button("Día Siguiente ▶", use_container_width=True):
+      if st.button("▶", use_container_width=True):
         st.session_state.fecha_cuaderno_actual += timedelta(days=1)
         st.rerun()
 
@@ -210,6 +222,10 @@ def render_cuaderno():
           st.markdown("---")
     else:
       st.info("📭 No hay registros para esta fecha. Esta página está en blanco.")
+
+# ----------------------------------------------
+# 4. NOTAS 
+# ----------------------------------------------
 
 def render_notas():
     st.title("Notas")
@@ -311,6 +327,10 @@ def render_notas():
     else:
       st.info("No hay notas guardadas")
 
+# ---------------------------------------------
+# 5. PAPELERA 
+# ---------------------------------------------
+
 def render_papelera():
     st.title("Papelera de Reciclaje")
     st.write("Los elementos eliminados se conservan aquí durante 7 días antes de borrarse de forma definitiva. Puedes restaurarlos o eliminarlos de inmediato si lo deseas.")
@@ -379,3 +399,23 @@ def render_papelera():
               conn.close()
               st.success("Nota eliminada definitivamente.")
               st.rerun()
+
+# ------------------------------------------
+# 6. BIENVENIDA 
+# ------------------------------------------
+
+def render_bienvenida():
+    st.title("Panel de Control - DeskLog")
+    st.write("Bienvenida.")
+    st.divider()
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("### Registro")
+    with col2:
+        st.markdown("### Cuaderno")
+    with col3:
+        st.markdown("### Buscador")
+
+    st.divider()
+    st.caption("DeskLog System — Operando en entorno seguro local.")
