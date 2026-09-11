@@ -52,28 +52,46 @@ if not st.session_state.autenticado:
       else:
         st.error("Access Denied")
 
+# ------------------------------------------
+# PANATALLA INICIAL 
+# ------------------------------------------
 else:
-  # APLICACIÓN PRINCIPAL
-  st.sidebar.title("Menú de Navegación")
-  opcion = st.sidebar.radio(
-      "Seleccione una opción:",
-      ["Inicio", "Registro de Turnos", "Buscar en el Histórico", "Vista Cuaderno", "Notas", "Papelera"],
-  )
+  if "menu_seleccionado" not in st.session_state:
+    st.session_state.menu_seleccionado = "Inicio"
 
-  if st.sidebar.button("Cerrar Sesión"):
-    st.session_state.autenticado = False
-    st.rerun()
+  # El menú lateral SOLO se dibuja si NO estamos en la pantalla de inicio
+  if st.session_state.menu_seleccionado != "Inicio":
+    st.sidebar.title("Menu de Navegacion")
+    
+    opciones_disponibles = ["Inicio", "Registro de Turnos", "Buscar en el Histórico", "Vista Cuaderno", "Notas", "Papelera"]
+    current_index = opciones_disponibles.index(st.session_state.menu_seleccionado) if st.session_state.menu_seleccionado in opciones_disponibles else 0
 
-  # Enrutador de vistas limpio
-  if opcion == "Inicio":
+    opcion = st.sidebar.radio(
+        "Seleccione una opcion:",
+        opciones_disponibles,
+        index=current_index,
+        key="radio_menu_lateral"
+    )
+
+    if opcion != st.session_state.menu_seleccionado:
+      st.session_state.menu_seleccionado = opcion
+      st.rerun()
+
+    if st.sidebar.button("Cerrar Sesion"):
+      st.session_state.autenticado = False
+      st.session_state.menu_seleccionado = "Inicio"
+      st.rerun()
+
+  # Enrutador de vistas
+  if st.session_state.menu_seleccionado == "Inicio":
     render_bienvenida()
-  elif opcion == "Registro de Turnos":
+  elif st.session_state.menu_seleccionado == "Registro de Turnos":
     render_registro_turnos()
-  elif opcion == "Buscar en el Histórico":
+  elif st.session_state.menu_seleccionado == "Buscar en el Histórico":
     render_buscador()
-  elif opcion == "Vista Cuaderno":
+  elif st.session_state.menu_seleccionado == "Vista Cuaderno":
     render_cuaderno()
-  elif opcion == "Notas":
+  elif st.session_state.menu_seleccionado == "Notas":
     render_notas()
-  elif opcion == "Papelera":
+  elif st.session_state.menu_seleccionado == "Papelera":
     render_papelera()

@@ -405,17 +405,34 @@ def render_papelera():
 # ------------------------------------------
 
 def render_bienvenida():
-    st.title("Panel de Control - DeskLog")
-    st.write("Bienvenida.")
-    st.divider()
+  
+    _, col_centro, _ = st.columns([1, 2, 1])
+    
+    with col_centro:
+        st.markdown("<h1 style='text-align: center;'>Bienvenida</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: gray;'>Selecciona una opcion para comenzar</p>", unsafe_allow_html=True)
+        st.write("")
+        
+        # Botones para navegar
+        if st.button("Registro de Turnos", use_container_width=True):
+            st.session_state.menu_seleccionado = "Registro de Turnos"
+            st.rerun()
+            
+        if st.button("Vista Cuaderno", use_container_width=True):
+            st.session_state.menu_seleccionado = "Vista Cuaderno"
+            st.rerun()
+            
+        if st.button("Buscar en el Historico", use_container_width=True):
+            st.session_state.menu_seleccionado = "Buscar en el Histórico"
+            st.rerun()
+            
+        if st.button("Notas", use_container_width=True):
+            st.session_state.menu_seleccionado = "Notas"
+            st.rerun()
+            
+        if st.button("Papelera", use_container_width=True):
+            st.session_state.menu_seleccionado = "Papelera"
+            st.rerun()
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown("### Registro")
-    with col2:
-        st.markdown("### Cuaderno")
-    with col3:
-        st.markdown("### Buscador")
-
-    st.divider()
-    st.caption("DeskLog System — Operando en entorno seguro local.")
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; color: gray; font-size: 12px;'>DeskLog System — Operando en entorno seguro local.</div>", unsafe_allow_html=True)
