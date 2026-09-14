@@ -1,22 +1,23 @@
-#!/bin/bash
-cd "$(dirname "$0")"
+@echo off
+cd /d "%~dp0"
 
-# 1. Verificar si Python está instalado en el Mac
-if ! command -v python3 &> /dev/null
-then
-    echo "[ATENCIÓN] No se encontró Python instalado en este Mac."
-    echo "Por favor instálalo desde python.org o asegúrate de tenerlo listo."
+:: 1. Verificar si Python está instalado
+python --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ATENCION] No se encontro Python instalado en este equipo.
+    echo Por favor instalalo desde python.org y asegurate de marcar la casilla "Add Python to PATH".
+    pause
     exit
-fi
+)
 
-# 2. Verificar si Streamlit está instalado, si no, instalarlo automáticamente
-if ! python3 -c "import streamlit" &> /dev/null
-then
-    echo "[INFO] Instalando dependencias por primera vez..."
-    python3 -m pip install --upgrade pip
-    python3 -m pip install streamlit
-fi
+:: 2. Verificar si Streamlit y Supabase estan instalados, si no, instalarlos
+python -c "import streamlit, supabase" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [INFO] Instalando dependencias por primera vez...
+    python -m pip install --upgrade pip
+    python -m pip install streamlit supabase
+)
 
-# 3. Iniciar la aplicación
-echo "[INFO] Abriendo la Bitácora de Recepción..."
-python3 -m streamlit run app.py
+:: 3. Iniciar la aplicacion
+echo [INFO] Abriendo la Bitacora de Recepcion...
+python -m streamlit run app.py

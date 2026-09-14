@@ -1,52 +1,21 @@
 from datetime import datetime, timedelta
-import sqlite3
+from supabase import create_client
+import streamlit as st
+
+def get_supabase_client():
+    """Crea y retorna la conexión oficial con Supabase usando los secretos de Streamlit."""
+    url = st.secrets["supabase"]["url"]
+    key = st.secrets["supabase"]["key"]
+    return create_client(url, key)
 
 def init_db():
-  conn = sqlite3.connect("bitacora_recepcion.db")
-  cursor = conn.cursor()
-
-  # Crear tablas base si no existen
-  cursor.execute("""
-        CREATE TABLE IF NOT EXISTS registros (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            fecha TEXT,
-            hora TEXT,
-            suceso TEXT,
-            nota TEXT
-        )
-    """)
-  
-  cursor.execute("""
-        CREATE TABLE IF NOT EXISTS notas_importantes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            titulo TEXT,
-            contenido TEXT
-        )
-    """)
-  conn.commit()
-
-  # Asegurar columnas de estado y fecha de eliminación en registros
-  cursor.execute("PRAGMA table_info(registros)")
-  columnas_reg = [col[1] for col in cursor.fetchall()]
-  if "estado" not in columnas_reg:
-    cursor.execute("ALTER TABLE registros ADD COLUMN estado TEXT DEFAULT 'activo'")
-  if "fecha_eliminacion" not in columnas_reg:
-    cursor.execute("ALTER TABLE registros ADD COLUMN fecha_eliminacion TEXT")
-
-  # Asegurar columnas en notas_importantes
-  cursor.execute("PRAGMA table_info(notas_importantes)")
-  columnas_notas = [col[1] for col in cursor.fetchall()]
-  if "estado" not in columnas_notas:
-    cursor.execute("ALTER TABLE notas_importantes ADD COLUMN estado TEXT DEFAULT 'activo'")
-  if "fecha_eliminacion" not in columnas_notas:
-    cursor.execute("ALTER TABLE notas_importantes ADD COLUMN fecha_eliminacion TEXT")
-
-  conn.commit()
-
-  # Limpieza de elementos con más de 7 días en la papelera
-  hace_siete_dias = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
-  cursor.execute("DELETE FROM registros WHERE estado = 'eliminado' AND fecha_eliminacion < ?", (hace_siete_dias,))
-  cursor.execute("DELETE FROM notas_importantes WHERE estado = 'eliminado' AND fecha_eliminacion < ?", (hace_siete_dias,))
-  
-  conn.commit()
-  conn.close()
+    """
+    Como las tablas 'registros' y 'notas_importantes' ya están creadas 
+    y configuradas directamente en la nube de Supabase, 
+    esta función queda lista para inicializar o hacer validaciones si lo necesitas.
+    """
+    supabase = get_supabase_client()
+    
+    # Opcional: Aquí podrías agregar lógica de limpieza si la requieres, 
+    # pero la estructura principal ya vive segura en Supabase.
+    pass

@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
-import sqlite3
 import streamlit as st
+from database import get_supabase_client
 
 # ------------------------------------------
 # 1. REGISTRO DE TURNOS
@@ -81,21 +81,21 @@ def render_registro_turnos():
         st.rerun()
 
       if guardar_todo:
-        conn = sqlite3.connect("bitacora_recepcion.db")
-        cursor = conn.cursor()
+        supabase = get_supabase_client()
         guardados_count = 0
         for ev in eventos_a_guardar:
           if ev["suceso"].strip() != "":  
-            cursor.execute(
-                "INSERT INTO registros (fecha, hora, suceso, nota, estado) VALUES (?, ?, ?, ?, 'activo')",
-                (fecha_actual, ev["hora"], ev["suceso"], ev["nota"]),
-            )
+            supabase.table("registros").insert({
+                "fecha": fecha_actual,
+                "hora": ev["hora"],
+                "suceso": ev["suceso"],
+                "nota": ev["nota"],
+                "estado": "activo"
+            }).execute()
             guardados_count += 1
-        conn.commit()
-        conn.close()
 
         if guardados_count > 0:
-          st.success(f"¡Se han guardado {guardados_count} registros para el día {fecha_actual} con éxito!")
+          st.success(f"¡Se han guardado {guardados_count} registros para el día {fecha_actual} en la nube con éxito!")
         else:
           st.warning("No hay nada escrito para guardar.")
 
@@ -136,18 +136,16 @@ def render_buscador():
           st.error("⚠️ La fecha seleccionada no es válida.")
 
     if ejecutar_busqueda:
-      conn = sqlite3.connect("bitacora_recepcion.db")
-      cursor = conn.cursor()
-      cursor.execute(
-          """
-              SELECT id, fecha, hora, suceso, nota FROM registros 
-              WHERE estado = 'activo' AND (suceso LIKE ? OR nota LIKE ? OR fecha LIKE ?)
-              ORDER BY fecha DESC, hora DESC
-          """, 
-          (f"%{termino_busqueda_sql}%", f"%{termino_busqueda_sql}%", f"%{termino_busqueda_sql}%"),
-      )
-      resultados = cursor.fetchall()
-      conn.close()
+      supabase = get_supabase_client()
+      # En Supabase podemos buscar coincidencias usando .or_ para múltiples columnas
+      query = supabase.table("registros").select("id, fecha, hora, suceso, nota").eq("estado", "activo")
+      
+      if termino_busqueda_sql:
+        query = query.or_(f"suceso.ilike.%{termino_busqueda_sql}%,nota.ilike.%{termino_busqueda_sql}%,fecha.eq.{termino_busqueda_sql}")
+      
+      response = query.order("fecha", desc=True).order("hora", desc=True).execute()
+      # Transformamos el resultado a formato de tupla para que encaje idéntico con tu UI anterior
+      resultados = [(r["id"], r["fecha"], r["hora"], r["suceso"], r["nota"]) for r in response.data]
       st.session_state["resultados_busqueda"] = resultados
 
     if "resultados_busqueda" in st.session_state and st.session_state["resultados_busqueda"]:
@@ -161,12 +159,13 @@ def render_buscador():
           st.info(f"**Fecha:** {fecha} | **Hora:** {hora}\n\n**Registro:** {suceso}\n\n**Nota:** {nota if nota else 'Sin notas adicionales'}")
         with col_res2:
           if st.button("🗑️", key=f"del_hist_{res_id}", help="Enviar a papelera"):
-            conn = sqlite3.connect("bitacora_recepcion.db")
-            cursor = conn.cursor()
+            supabase = get_supabase_client()
             ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            cursor.execute("UPDATE registros SET estado = 'eliminado', fecha_eliminacion = ? WHERE id = ?", (ahora, res_id))
-            conn.commit()
-            conn.close()
+            supabase.table("registros").update({
+                "estado": "eliminado",
+                "fecha_eliminacion": ahora
+            }).eq("id", res_id).execute()
+            
             st.session_state["resultados_busqueda"] = [r for r in resultados if r[0] != res_id]
             st.rerun()
 
@@ -206,11 +205,9 @@ def render_cuaderno():
     st.divider()
     st.markdown(f"### 📖 Página del día: {fecha_busqueda_str}")
 
-    conn = sqlite3.connect("bitacora_recepcion.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT hora, suceso, nota FROM registros WHERE estado = 'activo' AND fecha = ? ORDER BY hora ASC", (fecha_busqueda_str,))
-    registros_dia = cursor.fetchall()
-    conn.close()
+    supabase = get_supabase_client()
+    response = supabase.table("registros").select("hora, suceso, nota").eq("estado", "activo").eq("fecha", fecha_busqueda_str).order("hora", desc=False).execute()
+    registros_dia = [(r["hora"], r["suceso"], r["nota"]) for r in response.data]
 
     if registros_dia:
       for hora, suceso, nota in registros_dia:
@@ -255,13 +252,15 @@ def render_notas():
 
       if guardar_nota:
         if titulo_nota.strip() != "" and contenido_nota.strip() != "":
-          conn = sqlite3.connect("bitacora_recepcion.db")
-          cursor = conn.cursor()
-          cursor.execute("INSERT INTO notas_importantes (titulo, contenido, estado) VALUES (?, ?, 'activo')", (titulo_nota, contenido_nota))
-          conn.commit()
-          conn.close()
+          supabase = get_supabase_client()
+          supabase.table("notas_importantes").insert({
+              "titulo": titulo_nota,
+              "contenido": contenido_nota,
+              "estado": "activo"
+          }).execute()
+          
           st.session_state["limpiar_campos"] = True
-          st.success("¡Nota guardada con éxito!")
+          st.success("¡Nota guardada con éxito en la nube!")
           st.rerun()
         else:
           st.warning("Debe rellenar tanto el título como el contenido de la nota.")
@@ -269,11 +268,9 @@ def render_notas():
     st.divider()
     st.subheader("Notas Guardadas")
 
-    conn = sqlite3.connect("bitacora_recepcion.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, titulo, contenido FROM notas_importantes WHERE estado = 'activo' ORDER BY id DESC")
-    notas = cursor.fetchall()
-    conn.close()
+    supabase = get_supabase_client()
+    response = supabase.table("notas_importantes").select("id, titulo, contenido").eq("estado", "activo").order("id", desc=True).execute()
+    notas = [(n["id"], n["titulo"], n["contenido"]) for n in response.data]
 
     if notas:
       for nota_id, titulo, contenido in notas:
@@ -291,12 +288,12 @@ def render_notas():
                 st.rerun()
             with col_nb2:
               if st.button("Enviar a papelera", key=f"del_nota_{nota_id}"):
-                conn = sqlite3.connect("bitacora_recepcion.db")
-                cursor = conn.cursor()
                 ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                cursor.execute("UPDATE notas_importantes SET estado = 'eliminado', fecha_eliminacion = ? WHERE id = ?", (ahora, nota_id))
-                conn.commit()
-                conn.close()
+                supabase.table("notas_importantes").update({
+                    "estado": "eliminado",
+                    "fecha_eliminacion": ahora
+                }).eq("id", nota_id).execute()
+                
                 st.success(f"Nota '{titulo}' enviada a la papelera.")
                 st.rerun()
         else:
@@ -309,11 +306,11 @@ def render_notas():
             with col_e1:
               if st.button("Guardar cambios", key=f"save_edit_{nota_id}", type="primary"):
                 if nuevo_titulo.strip() != "" and nuevo_contenido.strip() != "":
-                  conn = sqlite3.connect("bitacora_recepcion.db")
-                  cursor = conn.cursor()
-                  cursor.execute("UPDATE notas_importantes SET titulo = ?, contenido = ? WHERE id = ?", (nuevo_titulo, nuevo_contenido, nota_id))
-                  conn.commit()
-                  conn.close()
+                  supabase.table("notas_importantes").update({
+                      "titulo": nuevo_titulo,
+                      "contenido": nuevo_contenido
+                  }).eq("id", nota_id).execute()
+                  
                   st.session_state[edit_key] = False
                   st.success("¡Nota actualizada con éxito!")
                   st.rerun()
@@ -336,14 +333,13 @@ def render_papelera():
     st.write("Los elementos eliminados se conservan aquí durante 7 días antes de borrarse de forma definitiva. Puedes restaurarlos o eliminarlos de inmediato si lo deseas.")
     st.divider()
 
-    conn = sqlite3.connect("bitacora_recepcion.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, fecha, hora, suceso, fecha_eliminacion FROM registros WHERE estado = 'eliminado' ORDER BY fecha_eliminacion DESC")
-    registros_papelera = cursor.fetchall()
+    supabase = get_supabase_client()
+    
+    res_reg = supabase.table("registros").select("id, fecha, hora, suceso, fecha_eliminacion").eq("estado", "eliminado").order("fecha_eliminacion", desc=True).execute()
+    registros_papelera = [(r["id"], r["fecha"], r["hora"], r["suceso"], r["fecha_eliminacion"]) for r in res_reg.data]
 
-    cursor.execute("SELECT id, titulo, fecha_eliminacion FROM notas_importantes WHERE estado = 'eliminado' ORDER BY fecha_eliminacion DESC")
-    notas_papelera = cursor.fetchall()
-    conn.close()
+    res_not = supabase.table("notas_importantes").select("id, titulo, fecha_eliminacion").eq("estado", "eliminado").order("fecha_eliminacion", desc=True).execute()
+    notas_papelera = [(n["id"], n["titulo"], n["fecha_eliminacion"]) for n in res_not.data]
 
     total_papelera = len(registros_papelera) + len(notas_papelera)
 
@@ -358,21 +354,16 @@ def render_papelera():
             st.text(f"[{fecha} - {hora}] {suceso} (Borrado el: {f_elim})")
           with col_p2:
             if st.button("Restaurar", key=f"rest_reg_{reg_id}"):
-              conn = sqlite3.connect("bitacora_recepcion.db")
-              cursor = conn.cursor()
-              cursor.execute("UPDATE registros SET estado = 'activo', fecha_eliminacion = NULL WHERE id = ?", (reg_id,))
-              conn.commit()
-              conn.close()
+              supabase.table("registros").update({
+                  "estado": "activo",
+                  "fecha_eliminacion": None
+              }).eq("id", reg_id).execute()
               st.success("Registro restaurado con éxito.")
               st.rerun()
           with col_p3:
             if st.button("Borrar ya", key=f"perm_reg_{reg_id}"):
-              conn = sqlite3.connect("bitacora_recepcion.db")
-              cursor = conn.cursor()
-              cursor.execute("DELETE FROM registros WHERE id = ?", (reg_id,))
-              conn.commit()
-              conn.close()
-              st.success("Eliminado por la eternidad.")
+              supabase.table("registros").delete().eq("id", reg_id).execute()
+              st.success("Eliminado definitivamente.")
               st.rerun()
 
       if notas_papelera:
@@ -383,56 +374,52 @@ def render_papelera():
             st.text(f"📌 {titulo} (Borrado el: {f_elim})")
           with col_n2:
             if st.button("Restaurar nota", key=f"rest_nota_{nota_id}"):
-              conn = sqlite3.connect("bitacora_recepcion.db")
-              cursor = conn.cursor()
-              cursor.execute("UPDATE notas_importantes SET estado = 'activo', fecha_eliminacion = NULL WHERE id = ?", (nota_id,))
-              conn.commit()
-              conn.close()
+              supabase.table("notas_importantes").update({
+                  "estado": "activo",
+                  "fecha_eliminacion": None
+              }).eq("id", nota_id).execute()
               st.success("Nota restaurada con éxito.")
               st.rerun()
           with col_n3:
             if st.button("Borrar nota ya", key=f"perm_nota_{nota_id}"):
-              conn = sqlite3.connect("bitacora_recepcion.db")
-              cursor = conn.cursor()
-              cursor.execute("DELETE FROM notas_importantes WHERE id = ?", (nota_id,))
-              conn.commit()
-              conn.close()
+              supabase.table("notas_importantes").delete().eq("id", nota_id).execute()
               st.success("Nota eliminada definitivamente.")
               st.rerun()
+
 
 # ------------------------------------------
 # 6. BIENVENIDA 
 # ------------------------------------------
 
 def render_bienvenida():
+  _, col_centro, _ = st.columns([1, 2, 1])
   
-    _, col_centro, _ = st.columns([1, 2, 1])
-    
-    with col_centro:
-        st.markdown("<h1 style='text-align: center;'>Bienvenida</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: gray;'>Selecciona una opcion para comenzar</p>", unsafe_allow_html=True)
-        st.write("")
-        
-        # Botones para navegar
-        if st.button("Registro de Turnos", use_container_width=True):
-            st.session_state.menu_seleccionado = "Registro de Turnos"
-            st.rerun()
-            
-        if st.button("Vista Cuaderno", use_container_width=True):
-            st.session_state.menu_seleccionado = "Vista Cuaderno"
-            st.rerun()
-            
-        if st.button("Buscar en el Historico", use_container_width=True):
-            st.session_state.menu_seleccionado = "Buscar en el Histórico"
-            st.rerun()
-            
-        if st.button("Notas", use_container_width=True):
-            st.session_state.menu_seleccionado = "Notas"
-            st.rerun()
-            
-        if st.button("Papelera", use_container_width=True):
-            st.session_state.menu_seleccionado = "Papelera"
-            st.rerun()
+  with col_centro:
+      st.markdown("<h1 style='text-align: center;'>Bienvenida</h1>", unsafe_allow_html=True)
+      st.markdown("<p style='text-align: center; color: gray;'>Selecciona una opcion para comenzar</p>", unsafe_allow_html=True)
+      st.write("")
+      
+      if st.button("Registro de Turnos", use_container_width=True):
+          st.session_state.menu_seleccionado = "Registro de Turnos"
+          st.rerun()
+          
+      if st.button("Vista Cuaderno", use_container_width=True):
+          st.session_state.menu_seleccionado = "Vista Cuaderno"
+          st.rerun()
+          
+      if st.button("Buscar en el Historico", use_container_width=True):
+          st.session_state.menu_seleccionado = "Buscar en el Histórico"
+          st.rerun()
+          
+      if st.button("Notas", use_container_width=True):
+          st.session_state.menu_seleccionado = "Notas"
+          st.rerun()
+          
+      if st.button("Papelera", use_container_width=True):
+          st.session_state.menu_seleccionado = "Papelera"
+          st.rerun()
 
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown("<div style='text-align: center; color: gray; font-size: 12px;'>DeskLog System — Operando en entorno seguro local.</div>", unsafe_allow_html=True)
+  st.markdown("<br><br>", unsafe_allow_html=True)
+  st.markdown("<div style='text-align: center; color: gray; font-size: 12px;'>DeskLog System — Operando en la nube con Supabase.</div>", unsafe_allow_html=True)
+
+  
