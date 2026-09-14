@@ -9,12 +9,12 @@ then
     exit
 fi
 
-# 2. Verificar si Streamlit está instalado, si no, instalarlo automáticamente
-if ! python3 -c "import streamlit" &> /dev/null
+# 2. Verificar dependencias (Streamlit y Supabase), si no, instalarlas automáticamente
+if ! python3 -c "import streamlit, supabase" &> /dev/null
 then
     echo "[INFO] Instalando dependencias por primera vez..."
     python3 -m pip install --upgrade pip
-    python3 -m pip install streamlit
+    python3 -m pip install streamlit supabase
 fi
 
 # 3. Iniciar la aplicación
