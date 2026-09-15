@@ -16,6 +16,4 @@ def init_db():
     """
     supabase = get_supabase_client()
     
-    # Opcional: Aquí podrías agregar lógica de limpieza si la requieres, 
-    # pero la estructura principal ya vive segura en Supabase.
     pass
