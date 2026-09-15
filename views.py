@@ -95,9 +95,9 @@ def render_registro_turnos():
             guardados_count += 1
 
         if guardados_count > 0:
-          st.success(f"¡Se han guardado {guardados_count} registros para el día {fecha_actual} en la nube con éxito!")
+          st.success(f"¡Se han guardado {guardados_count} registros para el día {fecha_actual} con éxito!")
         else:
-          st.warning("No hay nada escrito para guardar.")
+          st.warning("No hay nada para guardar.")
 
 # --------------------------------------------
 # 2. BUSCAR EN EL HISTÓRICO 
@@ -112,8 +112,11 @@ def render_buscador():
     ejecutar_busqueda = False
 
     if tipo_busqueda == "Por palabra clave":
-      termino = st.text_input("Escribe una palabra clave (ej: nombre, documento):", key="input_busqueda_historico")
-      if st.button("Buscar"):
+      with st.form("form_busqueda_clave"):
+        termino = st.text_input("Escribe una palabra clave (ej: nombre, documento):", key="input_busqueda_historico")
+        buscar_en_formulario = st.form_submit_button("Buscar")
+
+      if buscar_en_formulario:
         termino_busqueda_sql = termino.strip()
         ejecutar_busqueda = True
     else:
@@ -127,7 +130,7 @@ def render_buscador():
       with col_fb3:
         f_anio = st.number_input("Año", min_value=2024, max_value=2030, value=hoy.year, key="busq_anio")
 
-      if st.button("Buscar por fecha"):
+      if st.button("Buscar"):
         try:
           fecha_busq_obj = datetime(f_anio, f_mes, f_dia)
           termino_busqueda_sql = fecha_busq_obj.strftime("%Y-%m-%d")
@@ -137,14 +140,12 @@ def render_buscador():
 
     if ejecutar_busqueda:
       supabase = get_supabase_client()
-      # En Supabase podemos buscar coincidencias usando .or_ para múltiples columnas
       query = supabase.table("registros").select("id, fecha, hora, suceso, nota").eq("estado", "activo")
       
       if termino_busqueda_sql:
         query = query.or_(f"suceso.ilike.%{termino_busqueda_sql}%,nota.ilike.%{termino_busqueda_sql}%,fecha.eq.{termino_busqueda_sql}")
       
       response = query.order("fecha", desc=True).order("hora", desc=True).execute()
-      # Transformamos el resultado a formato de tupla para que encaje idéntico con tu UI anterior
       resultados = [(r["id"], r["fecha"], r["hora"], r["suceso"], r["nota"]) for r in response.data]
       st.session_state["resultados_busqueda"] = resultados
 
@@ -153,21 +154,25 @@ def render_buscador():
       st.divider()
       st.success(f"Se encontraron {len(resultados)} coincidencias:")
       
+      # Si es observador, ocultamos el botón de borrar de los resultados del buscador
+      es_observador = st.session_state.get("role") == "observer"
+
       for res_id, fecha, hora, suceso, nota in resultados:
-        col_res1, col_res2 = st.columns([5, 1])
+        col_res1, col_res2 = st.columns([5, 1] if not es_observador else [6, 0.01])
         with col_res1:
           st.info(f"**Fecha:** {fecha} | **Hora:** {hora}\n\n**Registro:** {suceso}\n\n**Nota:** {nota if nota else 'Sin notas adicionales'}")
-        with col_res2:
-          if st.button("🗑️", key=f"del_hist_{res_id}", help="Enviar a papelera"):
-            supabase = get_supabase_client()
-            ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            supabase.table("registros").update({
-                "estado": "eliminado",
-                "fecha_eliminacion": ahora
-            }).eq("id", res_id).execute()
-            
-            st.session_state["resultados_busqueda"] = [r for r in resultados if r[0] != res_id]
-            st.rerun()
+        if not es_observador:
+          with col_res2:
+            if st.button("🗑️", key=f"del_hist_{res_id}", help="Enviar a papelera"):
+              supabase = get_supabase_client()
+              ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+              supabase.table("registros").update({
+                  "estado": "eliminado",
+                  "fecha_eliminacion": ahora
+              }).eq("id", res_id).execute()
+              
+              st.session_state["resultados_busqueda"] = [r for r in resultados if r[0] != res_id]
+              st.rerun()
 
 # --------------------------------------------
 # 3. VISTA CUADERNO
@@ -203,7 +208,8 @@ def render_cuaderno():
     fecha_busqueda_str = st.session_state.fecha_cuaderno_actual.strftime("%Y-%m-%d")
     
     st.divider()
-    st.markdown(f"### 📖 Página del día: {fecha_busqueda_str}")
+    st.markdown(f"### Página del día: {fecha_busqueda_str}")
+    st.write("") # Pequeño respiro visual
 
     supabase = get_supabase_client()
     response = supabase.table("registros").select("hora, suceso, nota").eq("estado", "activo").eq("fecha", fecha_busqueda_str).order("hora", desc=False).execute()
@@ -211,14 +217,17 @@ def render_cuaderno():
 
     if registros_dia:
       for hora, suceso, nota in registros_dia:
-        with st.container():
-          st.markdown(f"**⏰ {hora}**")
-          st.write(f"{suceso}")
-          if nota:
-            st.caption(f"Detalle: {nota}")
-          st.markdown("---")
+        # Usamos contenedores con borde para estructurarlos como tarjetas limpias y ordenadas
+        with st.container(border=True):
+          col_h, col_t = st.columns([1, 6])
+          with col_h:
+            st.markdown(f"**{hora}**")
+          with col_t:
+            st.write(f"{suceso}")
+            if nota:
+              st.caption(f"Detalle: {nota}")
     else:
-      st.info("No hay registros para esta fecha. Esta página está en blanco.")
+      st.info("No hay registros para esta fecha.")
 
 # ----------------------------------------------
 # 4. NOTAS 
@@ -229,43 +238,48 @@ def render_notas():
     st.write("Guarde aquí información de referencia permanente, como listados de jefaturas, secretarias o procesos de reservas.")
     st.divider()
 
-    if "input_titulo_nota" not in st.session_state:
-      st.session_state["input_titulo_nota"] = ""
-    if "input_contenido_nota" not in st.session_state:
-      st.session_state["input_contenido_nota"] = ""
+    # Si es observador, bloqueamos la creación de nuevas notas
+    es_observador = st.session_state.get("role") == "observer"
 
-    if "limpiar_campos" not in st.session_state:
-      st.session_state["limpiar_campos"] = False
+    if not es_observador:
+        if "input_titulo_nota" not in st.session_state:
+          st.session_state["input_titulo_nota"] = ""
+        if "input_contenido_nota" not in st.session_state:
+          st.session_state["input_contenido_nota"] = ""
 
-    if st.session_state["limpiar_campos"]:
-      st.session_state["campo_titulo_temp"] = ""
-      st.session_state["campo_contenido_temp"] = ""
-      st.session_state["limpiar_campos"] = False
+        if "limpiar_campos" not in st.session_state:
+          st.session_state["limpiar_campos"] = False
 
-    with st.expander("➕ Añadir nueva nota", expanded=False):
-      titulo_nota = st.text_input("Título", key="campo_titulo_temp")
-      contenido_nota = st.text_area("Contenido", height=120, key="campo_contenido_temp")
-      
-      col_espacio_n, col_btn_n = st.columns([5, 2])
-      with col_btn_n:
-        guardar_nota = st.button("Guardar Nota", type="primary")
+        if st.session_state["limpiar_campos"]:
+          st.session_state["campo_titulo_temp"] = ""
+          st.session_state["campo_contenido_temp"] = ""
+          st.session_state["limpiar_campos"] = False
 
-      if guardar_nota:
-        if titulo_nota.strip() != "" and contenido_nota.strip() != "":
-          supabase = get_supabase_client()
-          supabase.table("notas_importantes").insert({
-              "titulo": titulo_nota,
-              "contenido": contenido_nota,
-              "estado": "activo"
-          }).execute()
+        with st.expander("➕ Añadir nueva nota", expanded=False):
+          titulo_nota = st.text_input("Título", key="campo_titulo_temp")
+          contenido_nota = st.text_area("Contenido", height=120, key="campo_contenido_temp")
           
-          st.session_state["limpiar_campos"] = True
-          st.success("¡Nota guardada con éxito en la nube!")
-          st.rerun()
-        else:
-          st.warning("Debe rellenar tanto el título como el contenido de la nota.")
+          col_espacio_n, col_btn_n = st.columns([5, 2])
+          with col_btn_n:
+            guardar_nota = st.button("Guardar Nota", type="primary")
 
-    st.divider()
+          if guardar_nota:
+            if titulo_nota.strip() != "" and contenido_nota.strip() != "":
+              supabase = get_supabase_client()
+              supabase.table("notas_importantes").insert({
+                  "titulo": titulo_nota,
+                  "contenido": contenido_nota,
+                  "estado": "activo"
+              }).execute()
+              
+              st.session_state["limpiar_campos"] = True
+              st.success("¡Nota guardada con éxito en la nube!")
+              st.rerun()
+            else:
+              st.warning("Debe rellenar tanto el título como el contenido de la nota.")
+
+        st.divider()
+    
     st.subheader("Notas Guardadas")
 
     supabase = get_supabase_client()
@@ -281,46 +295,48 @@ def render_notas():
         if not st.session_state[edit_key]:
           with st.expander(f"{titulo}"):
             st.write(contenido)
-            col_nb1, col_nb2 = st.columns([1, 1])
-            with col_nb1:
-              if st.button("Editar", key=f"btn_edit_{nota_id}"):
-                st.session_state[edit_key] = True
-                st.rerun()
-            with col_nb2:
-              if st.button("Enviar a papelera", key=f"del_nota_{nota_id}"):
-                ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                supabase.table("notas_importantes").update({
-                    "estado": "eliminado",
-                    "fecha_eliminacion": ahora
-                }).eq("id", nota_id).execute()
-                
-                st.success(f"Nota '{titulo}' enviada a la papelera.")
-                st.rerun()
-        else:
-          with st.container():
-            st.markdown(f"**Editando: {titulo}**")
-            nuevo_titulo = st.text_input("Nuevo título", value=titulo, key=f"nt_title_{nota_id}")
-            nuevo_contenido = st.text_area("Nuevo contenido", value=contenido, height=120, key=f"nt_cont_{nota_id}")
-            
-            col_e1, col_e2 = st.columns([1, 1])
-            with col_e1:
-              if st.button("Guardar cambios", key=f"save_edit_{nota_id}", type="primary"):
-                if nuevo_titulo.strip() != "" and nuevo_contenido.strip() != "":
+            if not es_observador:
+              col_nb1, col_nb2 = st.columns([1, 1])
+              with col_nb1:
+                if st.button("Editar", key=f"btn_edit_{nota_id}"):
+                  st.session_state[edit_key] = True
+                  st.rerun()
+              with col_nb2:
+                if st.button("Enviar a papelera", key=f"del_nota_{nota_id}"):
+                  ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                   supabase.table("notas_importantes").update({
-                      "titulo": nuevo_titulo,
-                      "contenido": nuevo_contenido
+                      "estado": "eliminado",
+                      "fecha_eliminacion": ahora
                   }).eq("id", nota_id).execute()
                   
-                  st.session_state[edit_key] = False
-                  st.success("¡Nota actualizada con éxito!")
+                  st.success(f"Nota '{titulo}' enviada a la papelera.")
                   st.rerun()
-                else:
-                  st.warning("Los campos no pueden quedar vacíos.")
-            with col_e2:
-              if st.button("Cancelar", key=f"cancel_edit_{nota_id}"):
-                st.session_state[edit_key] = False
-                st.rerun()
-          st.divider()
+        else:
+          if not es_observador:
+            with st.container():
+              st.markdown(f"**Editando: {titulo}**")
+              nuevo_titulo = st.text_input("Nuevo título", value=titulo, key=f"nt_title_{nota_id}")
+              nuevo_contenido = st.text_area("Nuevo contenido", value=contenido, height=120, key=f"nt_cont_{nota_id}")
+              
+              col_e1, col_e2 = st.columns([1, 1])
+              with col_e1:
+                if st.button("Guardar cambios", key=f"save_edit_{nota_id}", type="primary"):
+                  if nuevo_titulo.strip() != "" and nuevo_contenido.strip() != "":
+                    supabase.table("notas_importantes").update({
+                        "titulo": nuevo_titulo,
+                        "contenido": nuevo_contenido
+                    }).eq("id", nota_id).execute()
+                    
+                    st.session_state[edit_key] = False
+                    st.success("¡Nota actualizada con éxito!")
+                    st.rerun()
+                  else:
+                    st.warning("Los campos no pueden quedar vacíos.")
+              with col_e2:
+                if st.button("Cancelar", key=f"cancel_edit_{nota_id}"):
+                  st.session_state[edit_key] = False
+                  st.rerun()
+            st.divider()
     else:
       st.info("No hay notas guardadas")
 
@@ -399,7 +415,10 @@ def render_bienvenida():
       st.markdown("<p style='text-align: center; color: gray;'>Selecciona una opcion para comenzar</p>", unsafe_allow_html=True)
       st.write("")
       
-      if st.button("Registro de Turnos", use_container_width=True):
+      # Verificamos si el usuario actual es observador
+      es_observador = st.session_state.get("role") == "observer"
+      
+      if st.button("Registro de Turnos", use_container_width=True, disabled=es_observador):
           st.session_state.menu_seleccionado = "Registro de Turnos"
           st.rerun()
           
@@ -411,15 +430,14 @@ def render_bienvenida():
           st.session_state.menu_seleccionado = "Buscar en el Histórico"
           st.rerun()
           
-      if st.button("Notas", use_container_width=True):
+      if st.button("Notas", use_container_width=True, disabled=es_observador):
           st.session_state.menu_seleccionado = "Notas"
           st.rerun()
           
-      if st.button("Papelera", use_container_width=True):
+      if st.button("Papelera", use_container_width=True, disabled=es_observador):
           st.session_state.menu_seleccionado = "Papelera"
           st.rerun()
 
   st.markdown("<br><br>", unsafe_allow_html=True)
   st.markdown("<div style='text-align: center; color: gray; font-size: 12px;'>DeskLog System — Operando en la nube con Supabase.</div>", unsafe_allow_html=True)
 
-  
