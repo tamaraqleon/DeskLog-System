@@ -13,8 +13,9 @@ from views import (
 # Inicializar Base de Datos
 init_db()
 
-# Contraseña
-CLAVE_RCPN_HASH = hashlib.sha256("RCPN26".encode()).hexdigest()
+# Leer la contraseña de forma segura desde los secretos
+clave_guardada = st.secrets["CLAVE_RCPN"]
+CLAVE_RCPN_HASH = hashlib.sha256(clave_guardada.encode()).hexdigest()
 
 # CONFIGURACIÓN DE LA PÁGINA
 st.set_page_config(page_title="Bitácora de Recepción", layout="wide")
