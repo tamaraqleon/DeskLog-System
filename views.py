@@ -95,9 +95,15 @@ def render_registro_turnos():
             guardados_count += 1
 
         if guardados_count > 0:
-          st.success(f"¡Se han guardado {guardados_count} registros para el día {fecha_actual} con éxito!")
+            st.session_state.contador_id += 10
+            nuevo_inicio = st.session_state.contador_id
+            st.session_state.filas_activas = [nuevo_inicio, nuevo_inicio + 1, nuevo_inicio + 2]
+            st.session_state.contador_id += 3
+
+            st.success(f"¡Se han guardado {guardados_count} registros para el día {fecha_actual} con éxito!")
+            st.rerun()
         else:
-          st.warning("No hay nada para guardar.")
+            st.warning("No hay nada para guardar.")
 
 # --------------------------------------------
 # 2. BUSCAR EN EL HISTÓRICO 
