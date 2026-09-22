@@ -447,3 +447,4 @@ def render_bienvenida():
   st.markdown("<br><br>", unsafe_allow_html=True)
   st.markdown("<div style='text-align: center; color: gray; font-size: 12px;'>DeskLog System — Operando en la nube con Supabase.</div>", unsafe_allow_html=True)
 
+
