@@ -1,6 +1,11 @@
 import hashlib
 import streamlit as st
-from database import init_db
+from database import (
+    init_db,
+    obtener_hash_login,
+    obtener_hash_reservas,
+    actualizar_hash_login,
+)
 from views import (
     render_registro_turnos,
     render_buscador,
@@ -23,9 +28,21 @@ from theme_manager import (
 # Inicializar Base de Datos
 init_db()
 
-# Leer la contraseña de forma segura desde los secretos
-clave_guardada = st.secrets["CLAVE_RCPN"]
-CLAVE_RCPN_HASH = hashlib.sha256(clave_guardada.encode()).hexdigest()
+# Clave de login: primero busca en Supabase, si no hay usa la de secrets como fallback
+_hash_supabase = obtener_hash_login()
+if _hash_supabase:
+    CLAVE_RCPN_HASH = _hash_supabase
+else:
+    clave_guardada = st.secrets["CLAVE_RCPN"]
+    CLAVE_RCPN_HASH = hashlib.sha256(clave_guardada.encode()).hexdigest()
+
+# Clave de reservas: primero busca en Supabase, si no hay usa la de secrets como fallback
+_hash_reservas_supabase = obtener_hash_reservas()
+if _hash_reservas_supabase:
+    CLAVE_RESERVAS_HASH = _hash_reservas_supabase
+else:
+    clave_reservas = st.secrets["CLAVE_RESERVAS"]
+    CLAVE_RESERVAS_HASH = hashlib.sha256(clave_reservas.encode()).hexdigest()
 
 # CONFIGURACIÓN DE LA PÁGINA
 st.set_page_config(page_title="Bitácora de Recepción", layout="wide", initial_sidebar_state="collapsed")
@@ -82,6 +99,39 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
     }
 
+    .st-key-btn_olvide_form button {
+        background: none !important;
+        border: none !important;
+        padding: 0 !important;
+        color: inherit !important;
+        text-decoration: underline !important;
+        font-size: 0.85em !important;
+        box-shadow: none !important;
+    }
+    .st-key-btn_olvide_form button:hover {
+        background: none !important;
+        border: none !important;
+        opacity: 0.7 !important;
+    }
+    .st-key-btn_olvide_form button p {
+        color: inherit !important;
+        text-decoration: underline !important;
+    }
+
+    .st-key-btn_olvide_form button:hover,
+    .st-key-btn_olvide_form button:focus,
+    .st-key-btn_olvide_form button:active {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    .st-key-btn_olvide_form button:hover p,
+    .st-key-btn_olvide_form button:focus p,
+    .st-key-btn_olvide_form button:active p {
+        color: inherit !important;
+        text-decoration: underline !important;
+    }
+
     </style>
 """, unsafe_allow_html=True)
 
@@ -90,6 +140,8 @@ if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
 if "role" not in st.session_state:
     st.session_state.role = None
+if "mostrar_recuperacion" not in st.session_state:
+    st.session_state.mostrar_recuperacion = False
 
 # PANTALLA DE ACCESO (LOGIN / SELECCIÓN DE ROL)
 if not st.session_state.autenticado:
@@ -99,18 +151,54 @@ if not st.session_state.autenticado:
     with col1:
         with st.container(border=True):
             st.subheader("Soy Recepcionista")
-            with st.form("form_login", border=False):
-                password_ingresada = st.text_input("Contraseña:", type="password")
-                ingresar = st.form_submit_button("Ingresar")
 
-            if ingresar:
-                hash_ingresado = hashlib.sha256(password_ingresada.encode()).hexdigest()
-                if hash_ingresado == CLAVE_RCPN_HASH:
-                    st.session_state.autenticado = True
-                    st.session_state.role = "admin"
+            if not st.session_state.get("mostrar_recuperacion", False):
+                with st.form("form_login", border=False):
+                    password_ingresada = st.text_input("Contraseña:", type="password")
+                    col_a, col_b = st.columns([3, 2])
+                    with col_a:
+                        ingresar = st.form_submit_button("Ingresar")
+                    with col_b:
+                        olvide = st.form_submit_button("¿Olvidaste tu contraseña?", key="btn_olvide_form")
+
+                if ingresar:
+                    hash_ingresado = hashlib.sha256(password_ingresada.encode()).hexdigest()
+                    if hash_ingresado == CLAVE_RCPN_HASH:
+                        st.session_state.autenticado = True
+                        st.session_state.role = "admin"
+                        st.rerun()
+                    else:
+                        st.error("Oh, oh...")
+
+                if olvide:
+                    st.session_state.mostrar_recuperacion = True
                     st.rerun()
-                else:
-                    st.error("Oh, oh...")
+            else:
+                with st.form("form_recuperacion", border=False):
+                    st.markdown("**Recuperar contraseña**")
+                    st.caption("Ingresá la contraseña de reservas para verificar tu identidad.")
+                    reservas = st.text_input("Contraseña de reservas:", type="password", key="rec_reservas")
+                    nueva = st.text_input("Nueva contraseña:", type="password", key="rec_nueva")
+                    confirma = st.text_input("Confirmar nueva contraseña:", type="password", key="rec_confirma")
+                    enviar = st.form_submit_button("Cambiar contraseña")
+
+                if enviar:
+                    hash_reservas_ingresada = hashlib.sha256(reservas.encode()).hexdigest()
+                    if hash_reservas_ingresada != CLAVE_RESERVAS_HASH:
+                        st.error("Contraseña de reservas incorrecta.")
+                    elif not nueva or len(nueva) < 6:
+                        st.warning("La nueva contraseña debe tener al menos 6 caracteres.")
+                    elif nueva != confirma:
+                        st.error("Las contraseñas nuevas no coinciden.")
+                    else:
+                        actualizar_hash_login(nueva)
+                        st.success("¡Contraseña cambiada con éxito! Ya podés iniciar sesión.")
+                        st.session_state.mostrar_recuperacion = False
+                        st.rerun()
+
+                if st.button("Cancelar", key="btn_cancelar_rec"):
+                    st.session_state.mostrar_recuperacion = False
+                    st.rerun()
 
     with col2:
         with st.container(border=True):
