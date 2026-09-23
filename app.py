@@ -26,7 +26,9 @@ from theme_manager import (
 )
 
 # Inicializar Base de Datos
-init_db()
+if "db_inicializada" not in st.session_state:
+    init_db()
+    st.session_state.db_inicializada = True
 
 # Clave de login: primero busca en Supabase, si no hay usa la de secrets como fallback
 _hash_supabase = obtener_hash_login()
