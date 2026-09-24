@@ -211,16 +211,41 @@ def aplicar_tema(tema: dict) -> None:
             color: {text} !important;
         }}
 
+        /* Hover del desplegable */
         div[data-baseweb="popover"] li:hover,
-        ul[role="listbox"] li[role="option"]:hover,
-        li[role="option"][aria-selected="true"] {{
+        ul[role="listbox"] li[role="option"]:hover {{
             background-color: {primary} !important;
-            color: #FFFFFF !important;
         }}
+        div[data-baseweb="popover"] li:hover *,
+        ul[role="listbox"] li[role="option"]:hover * {{
+            color: #FFFFFF !important;
+            background-color: transparent !important;
+        }}
+
+        /* Ítem seleccionado del desplegable */
+        li[role="option"][aria-selected="true"],
+        div[data-baseweb="popover"] li[aria-selected="true"] {{
+            background-color: {primary} !important;
+        }}
+        li[role="option"][aria-selected="true"] *,
+        div[data-baseweb="popover"] li[aria-selected="true"] * {{
+            color: #FFFFFF !important;
+            background-color: transparent !important;
+        }}
+
+        div[data-baseweb="input"],
+        div[data-baseweb="base-input"],
+        div[data-baseweb="textarea"],
+        div[data-baseweb="select"] > div {{
+            border: 1px solid {primary} !important;
+        }} 
 
         /* ============================================================
            BOTONES
            ============================================================ */
+           
+        /* SECONDARY BTTONS */
+
         button[data-testid="stBaseButton-secondary"],
         button[data-testid="stBaseButton-secondaryFormSubmit"] {{
             background-color: {background} !important;
@@ -228,34 +253,51 @@ def aplicar_tema(tema: dict) -> None:
             color: {primary} !important;
             transition: all 0.15s ease !important;
         }}
-        button[data-testid="stBaseButton-secondary"] p,
-        button[data-testid="stBaseButton-secondaryFormSubmit"] p {{
+
+        button[data-testid="stBaseButton-secondary"] *,
+        button[data-testid="stBaseButton-secondaryFormSubmit"] * {{
+            background-color: transparent !important;
             color: {primary} !important;
         }}
+
         button[data-testid="stBaseButton-secondary"]:hover,
         button[data-testid="stBaseButton-secondaryFormSubmit"]:hover {{
             border-color: {hover} !important;
             background-color: {hover} !important;
         }}
-        button[data-testid="stBaseButton-secondary"]:hover p,
-        button[data-testid="stBaseButton-secondaryFormSubmit"]:hover p {{
+
+        button[data-testid="stBaseButton-secondary"]:hover *,
+        button[data-testid="stBaseButton-secondaryFormSubmit"]:hover * {{
             color: #FFFFFF !important;
+            background-color: transparent !important;
         }}
 
+        /* PRIMARY */
+        
         button[data-testid="stBaseButton-primary"],
         button[data-testid="stBaseButton-primaryFormSubmit"] {{
             background-color: {primary} !important;
             border-color: {primary} !important;
         }}
-        button[data-testid="stBaseButton-primary"] p,
-        button[data-testid="stBaseButton-primaryFormSubmit"] p {{
+
+        button[data-testid="stBaseButton-primary"] *,
+        button[data-testid="stBaseButton-primaryFormSubmit"] * {{
+            background-color: transparent !important;
             color: #FFFFFF !important;
         }}
+
         button[data-testid="stBaseButton-primary"]:hover,
         button[data-testid="stBaseButton-primaryFormSubmit"]:hover {{
             background-color: {hover} !important;
             border-color: {hover} !important;
         }}
+
+        button[data-testid="stBaseButton-primary"]:hover *,
+        button[data-testid="stBaseButton-primaryFormSubmit"]:hover * {{
+            color: #FFFFFF !important;
+            background-color: transparent !important;
+        }}
+
 
         /* ============================================================
            TARJETAS CON BORDE (st.container(border=True))
@@ -333,58 +375,42 @@ def aplicar_tema(tema: dict) -> None:
             border: 3px solid {primary} !important;
         }}
 
-        /* === CALENDARIO === */
+        /* === CALENDARIO (versión nuclear) === */
+
+        /* Cualquier cosa dentro del popover del datepicker */
+        div[data-baseweb="popover"] *,
+        div[data-baseweb="popover"] *::before,
+        div[data-baseweb="popover"] *::after {{
+            background-color: {background} !important;
+            color: {text} !important;
+        }}
 
         /* Día seleccionado */
         div[data-baseweb="calendar"] *[aria-label^="Selected"],
         div[data-baseweb="calendar"] *[aria-label^="Selected"]::before,
-        div[data-baseweb="calendar"] *[aria-label^="Selected"]::after {{
+        div[data-baseweb="calendar"] *[aria-label^="Selected"]::after,
+        div[data-baseweb="calendar"] *[aria-label^="Selected"] > div {{
             background-color: {primary} !important;
             border-color: {primary} !important;
             color: #FFFFFF !important;
-        }}
-
-        div[data-baseweb="calendar"] *[aria-label^="Selected"] > div,
-        div[data-baseweb="calendar"] *[aria-label^="Selected"] > div::before {{
-            background-color: {primary} !important;
-            color: #FFFFFF !important;
-        }}
-
-        div[data-baseweb="calendar"] div[role="gridcell"][aria-label^="Selected"] {{
-            background-color: {primary} !important;
-            border: none !important;
-            border-radius: 50% !important;
         }}
 
         /* Hover de días */
         div[data-baseweb="calendar"] div[role="gridcell"]:hover,
         div[data-baseweb="calendar"] div[role="gridcell"]:hover::before,
-        div[data-baseweb="calendar"] div[role="gridcell"]:hover::after {{
+        div[data-baseweb="calendar"] div[role="gridcell"]:hover::after,
+        div[data-baseweb="calendar"] div[role="gridcell"]:hover > div {{
             background-color: {primary} !important;
             color: #FFFFFF !important;
             border-color: {primary} !important;
             border-radius: 50% !important;
         }}
 
-        div[data-baseweb="calendar"] div[role="gridcell"]:hover > div,
-        div[data-baseweb="calendar"] div[role="gridcell"]:hover > div > div {{
-            background-color: transparent !important;
-            color: #FFFFFF !important;
+        /* Aro exterior del día seleccionado */
+        div[data-baseweb="calendar"] div[role="gridcell"][aria-label^="Selected"] {{
+            background-color: {primary} !important;
             border: none !important;
-        }}
-
-        /* Header del calendario */
-        div[data-baseweb="calendar"] > div:nth-child(-n+2),
-        div[data-baseweb="calendar"] > div:nth-child(-n+2) > div,
-        div[data-baseweb="calendar"] > div:nth-child(-n+2) > div > div {{
-            background-color: {background} !important;
-            color: {text} !important;
-        }}
-
-        div[data-baseweb="calendar"] > div:nth-child(-n+2) button,
-        div[data-baseweb="calendar"] > div:nth-child(-n+2) [role="button"] {{
-            background-color: {background} !important;
-            color: {text} !important;
+            border-radius: 50% !important;
         }}
 
         /* Botones del number input */
@@ -445,6 +471,25 @@ def aplicar_tema(tema: dict) -> None:
             transform: translate(-50%, -50%) !important;
             line-height: 1 !important;
         }}
+
+        /* Input de fecha (date picker) */
+        div[data-testid="stDateInput"] div[data-baseweb="input"],
+        div[data-testid="stDateInput"] div[data-baseweb="base-input"] {{
+            background-color: {background} !important;
+            border: 1px solid {primary} !important;
+        }}
+
+        div[data-testid="stDateInput"] div[data-baseweb="input"]:focus-within,
+        div[data-testid="stDateInput"] div[data-baseweb="base-input"]:focus-within {{
+            border-color: {primary} !important;
+            box-shadow: 0 0 0 1px {primary} !important;
+        }}
+
+        div[data-testid="stDateInput"] input {{
+            background-color: {background} !important;
+            color: {text} !important;
+        }}
+
         </style>
     """, unsafe_allow_html=True)
 
