@@ -377,12 +377,40 @@ def aplicar_tema(tema: dict) -> None:
 
         /* === CALENDARIO (versión nuclear) === */
 
-        /* Cualquier cosa dentro del popover del datepicker */
-        div[data-baseweb="popover"] *,
-        div[data-baseweb="popover"] *::before,
-        div[data-baseweb="popover"] *::after {{
+        /* Fondo general del popover del datepicker */
+        div[data-baseweb="popover"]:has(div[data-baseweb="calendar"]),
+        div[data-baseweb="popover"]:has(div[data-baseweb="calendar"]) > div {{
             background-color: {background} !important;
             color: {text} !important;
+        }}
+
+        /* Todo dentro del calendario */
+        div[data-baseweb="calendar"],
+        div[data-baseweb="calendar"] *,
+        div[data-baseweb="calendar"] *::before,
+        div[data-baseweb="calendar"] *::after {{
+            background-color: {background} !important;
+            color: {text} !important;
+        }}
+
+        /* Día seleccionado y hover: repintar por encima */
+        div[data-baseweb="calendar"] *[aria-label^="Selected"],
+        div[data-baseweb="calendar"] *[aria-label^="Selected"]::before,
+        div[data-baseweb="calendar"] *[aria-label^="Selected"]::after,
+        div[data-baseweb="calendar"] *[aria-label^="Selected"] > div {{
+            background-color: {primary} !important;
+            color: #FFFFFF !important;
+            border-color: {primary} !important;
+        }}
+
+        div[data-baseweb="calendar"] div[role="gridcell"]:hover,
+        div[data-baseweb="calendar"] div[role="gridcell"]:hover::before,
+        div[data-baseweb="calendar"] div[role="gridcell"]:hover::after,
+        div[data-baseweb="calendar"] div[role="gridcell"]:hover > div {{
+            background-color: {primary} !important;
+            color: #FFFFFF !important;
+            border-color: {primary} !important;
+            border-radius: 50% !important;
         }}
 
         /* Día seleccionado */
